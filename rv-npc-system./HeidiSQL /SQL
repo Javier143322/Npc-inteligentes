@@ -1,11 +1,10 @@
 CREATE TABLE IF NOT EXISTS `rv_npcs` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `npc_id` VARCHAR(50) UNIQUE, -- ID único del ciudadano
-  `name` VARCHAR(100),
-  `reputation` INT DEFAULT 50, -- 0 (Odio) a 100 (Amigo)
-  `is_dead` TINYINT DEFAULT 0, -- Para el sistema de CK
-  `last_seen_mask` VARCHAR(50) DEFAULT NULL, -- Si te vio con máscara
-  `job` VARCHAR(50) DEFAULT 'unemployed', -- Su trabajo actual
-  `metadata` LONGTEXT DEFAULT '{}' -- Para guardar inventario y deudas
-);
-
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `npc_id` VARCHAR(100) NOT NULL,
+  `name` VARCHAR(50) DEFAULT 'Desconocido',
+  `reputation` INT(11) DEFAULT 50,
+  `job` VARCHAR(50) DEFAULT 'unemployed',
+  `is_dead` TINYINT(1) DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `npc_id` (`npc_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
