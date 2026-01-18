@@ -1,24 +1,25 @@
 -- ============================================================
 -- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- AUTHOR: ANDRÉS (GPROJECT MANAGER)
+-- AUTHOR: ANDRÉS (PROJECT MANAGER)
 -- ============================================================
 
 fx_version 'cerulean'
 game 'gta5'
 
 description 'Sistema de NPCs con Memoria, Economía y Fuerza Laboral'
-version '1.0.0'
+version '1.0.1'
 
--- Dependencias Críticas
+-- Dependencias Críticas (Asegúrate de tenerlas en tu server)
 dependencies {
     'oxmysql',
-    'ox_inventory',
-    'ox_lib'
+    'ox_lib',
+    'ox_inventory'
 }
 
--- Configuración Global
+-- Scripts Compartidos (Se cargan en Cliente y Servidor)
 shared_scripts {
-    'config.lua'
+    'config.lua',
+    'utils/sh_utils.lua' -- Nuevo archivo de utilidades
 }
 
 -- Scripts del Cliente
@@ -36,10 +37,10 @@ server_scripts {
     'server/sv_economy.lua'
 }
 
--- Archivos de Datos
+-- Archivos de Datos / SQL
 files {
-    'npcs.sql'
+    'utils/npcs.sql'
 }
 
--- Capacidades del recurso
+-- Metadata del Recurso
 provide 'rv-npc-system'
