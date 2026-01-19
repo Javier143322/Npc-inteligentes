@@ -1,0 +1,61 @@
+-- ============================================================
+-- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
+-- COMPONENTE: INTELIGENCIA DE BANDAS (cl_gangs.lua)
+-- ============================================================
+
+local GangZones = {
+    {name = "Families", coords = vector3(-130.0, -1550.0, 25.0), radius = 150.0, modelHash = `g_m_y_famca_01`},
+    {name = "Ballas", coords = vector3(100.0, -1900.0, 25.0), radius = 150.0, modelHash = `g_m_y_ballaeast_01`},
+}
+
+-- 1. FUNCIÓN: DETECTAR SI EL JUGADOR ESTÁ EN ZONA DE RIESGO
+Citizen.CreateThread(function()
+    while true do
+        local sleep = 2000
+        local playerPed = PlayerPedId()
+        local pCoords = GetEntityCoords(playerPed)
+
+        for _, zone in pairs(GangZones) do
+            local dist = #(pCoords - zone.coords)
+            
+            if dist < zone.radius then
+                sleep = 1000
+                -- Si el jugador tiene un arma en la mano, los NPCs se ponen alerta
+                if IsPedArmed(playerPed, 7) then
+                    AlertarBandaCercana(zone.name, pCoords)
+                end
+            end
+        end
+        Wait(sleep)
+    end
+end)
+
+-- 2. LÓGICA DE ATAQUE COORDINADO
+function AlertarBandaCercana(gangName, playerCoords)
+    local pPed = PlayerPedId()
+    
+    -- Buscamos NPCs de la banda en el área
+    local peds = GetGamePool('CPed')
+    for _, npc in ipairs(peds) do
+        if not IsPedAPlayer(npc) and not IsEntityDead(npc) then
+            local npcCoords = GetEntityCoords(npc)
+            if #(npcCoords - playerCoords) < 40.0 then
+                -- Si el NPC pertenece a la banda (por modelo o relación)
+                -- Aquí podrías añadir una comprobación de reputación desde la DB
+                
+                SetPedRelationshipGroupHash(npc, `HATES_PLAYER`)
+                TaskCombatPed(npc, pPed, 0, 16) -- Atacar al jugador
+                
+                -- Gritar aviso a otros miembros
+                PlayAmbientSpeech1(npc, "GENERIC_CURSE_HIGH", "SPEECH_PARAMS_FORCE_SHOUTED")
+            end
+        end
+    end
+end
+
+-- 3. REGISTRO DE RELACIONES AL INICIAR
+Citizen.CreateThread(function()
+    AddRelationshipGroup('GANG_PLAYER_HOSTILE')
+    SetRelationshipBetweenGroups(5, `GANG_PLAYER_HOSTILE`, `PLAYER`)
+    SetRelationshipBetweenGroups(5, `PLAYER`, `GANG_PLAYER_HOSTILE`)
+end)
