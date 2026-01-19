@@ -1,14 +1,14 @@
 -- ============================================================
 -- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
 -- AUTHOR: ANDRÉS (PROJECT MANAGER)
--- VERSIÓN: 1.0.2 (Gang Intelligence Update)
+-- VERSIÓN: 1.1.0 (Final Release)
 -- ============================================================
 
 fx_version 'cerulean'
 game 'gta5'
 
-description 'Sistema de NPCs con Memoria, Economía y Lógica de Bandas'
-version '1.0.2'
+description 'Sistema Integral de NPCs: IA, Economía y Reputación de Bandas'
+version '1.1.0'
 
 -- Dependencias Críticas
 dependencies {
@@ -29,14 +29,15 @@ client_scripts {
     'client/cl_driving.lua',
     'client/cl_jobs.lua',
     'client/cl_delivery.lua',
-    'client/cl_gangs.lua' -- Nuevo módulo de Bandas
+    'client/cl_gangs.lua'
 }
 
 -- Scripts del Servidor
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/sv_main.lua',
-    'server/sv_economy.lua'
+    'server/sv_economy.lua',
+    'server/sv_gangs.lua' -- Nuevo módulo de persistencia de bandas
 }
 
 -- Archivos de Datos / SQL
