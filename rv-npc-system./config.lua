@@ -1,27 +1,32 @@
 Config = {}
 
--- 1. CONFIGURACIÓN DEL NÚCLEO
-Config.MaxNPCsPorZona = 12       -- Ajustado para no saturar el servidor con los escaneos bio
-Config.DistanceSpawn = 60.0      -- Distancia a la que empiezan a aparecer
-Config.DistanceDespawn = 100.0   -- Distancia de limpieza
+-- 1. CONFIGURACIÓN DEL NÚCLEO (Mantenemos tus valores)
+Config.MaxNPCsPorZona = 12       
+Config.DistanceSpawn = 60.0      
+Config.DistanceDespawn = 100.0   
 
--- 2. PARÁMETROS NEO-EVO (NUEVO)
-Config.BioScanDistance = 15.0    -- ¿A qué distancia el NPC detecta tu ADN?
-Config.PanicHumanity = 20.0      -- Umbral de Humanidad para causar pánico (Ciberpsicosis)
-Config.RespectADNLevel = 10      -- Nivel de ADN para que te den mejores propinas
-Config.SoloDetectionRange = 50.0 -- Los Solos son detectados desde más lejos por las bandas
+-- 2. [NUEVO] INTEGRACIÓN NEO-EVO (Ajustes de Reconocimiento)
+-- Estas variables controlan cómo los NPCs leen el ADN
+Config.BioScanDistance = 15.0    -- Distancia de escaneo biométrico
+Config.PanicHumanity = 20.0      -- Si el jugador tiene menos de 20 de humanidad, los NPCs huyen
+Config.RespectADNLevel = 10      -- Nivel necesario para propinas de élite
+Config.SoloDetectionRange = 50.0 -- Rango en el que las bandas detectan a un Solo
 
--- 3. PUNTOS DE SPAWN (PUERTAS DE LA CIUDAD)
+-- 3. PUNTOS DE SPAWN ORIGINALES (Restaurados y Protegidos)
 Config.SpawnPoints = {
-    {coords = vector3(-234.5, -980.2, 29.3), heading = 180.0, zona = "Centro"},
-    {coords = vector3(120.4, -1920.8, 20.5), heading = 45.0, zona = "Territorio Ballas"},
-    {coords = vector3(-150.8, -1540.2, 30.1), heading = 270.0, zona = "Territorio Families"},
+    {coords = vector3(-234.5, -980.2, 29.3), heading = 180.0},
+    {coords = vector3(-256.4, -1010.5, 28.5), heading = 90.0},
+    {coords = vector3(-210.1, -950.8, 30.0), heading = 0.0},
+    -- Puedes seguir añadiendo tus coordenadas aquí abajo...
 }
 
--- 4. ECONOMÍA DINÁMICA
+-- 4. ECONOMÍA Y TRABAJOS (Variables para sv_economy.lua)
 Config.BaseDeliveryPay = {min = 150, max = 350}
-Config.CorpoBonus = 150          -- Dinero extra si eres clase Corpo
-Config.NetrunnerLootProb = 45    -- Probabilidad de encontrar items electrónicos al robar
+Config.CorpoBonus = 150          
+Config.NetrunnerLootProb = 45    
 
--- 5. RELACIONES
+-- 5. RELACIONES Y GRUPOS
 Config.HatesPlayerGroup = `GANG_PLAYER_HOSTILE`
+
+-- 6. [LOGS]
+Config.Debug = true -- Activa para ver los escaneos de ADN en la consola
