@@ -1,55 +1,27 @@
--- ============================================================
--- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- COMPONENTE: CONFIGURACIÓN GLOBAL (config.lua)
--- ============================================================
-
 Config = {}
 
--- 1. CONFIGURACIÓN GENERAL
-Config.Debug = true -- Muestra mensajes en consola (poner en false al terminar)
-Config.MaxNPCsPorZona = 8 -- Máximo de NPCs creados por este script cerca del jugador
-Config.DistanceSpawn = 50.0 -- Distancia a la que empiezan a aparecer
-Config.DistanceDespawn = 70.0 -- Distancia a la que se eliminan para ahorrar RAM
+-- 1. CONFIGURACIÓN DEL NÚCLEO
+Config.MaxNPCsPorZona = 12       -- Ajustado para no saturar el servidor con los escaneos bio
+Config.DistanceSpawn = 60.0      -- Distancia a la que empiezan a aparecer
+Config.DistanceDespawn = 100.0   -- Distancia de limpieza
 
--- 2. PUNTOS DE GENERACIÓN LÓGICA (Salida de edificios)
--- coords: dónde aparecen | heading: hacia dónde miran | label: nombre del sitio
+-- 2. PARÁMETROS NEO-EVO (NUEVO)
+Config.BioScanDistance = 15.0    -- ¿A qué distancia el NPC detecta tu ADN?
+Config.PanicHumanity = 20.0      -- Umbral de Humanidad para causar pánico (Ciberpsicosis)
+Config.RespectADNLevel = 10      -- Nivel de ADN para que te den mejores propinas
+Config.SoloDetectionRange = 50.0 -- Los Solos son detectados desde más lejos por las bandas
+
+-- 3. PUNTOS DE SPAWN (PUERTAS DE LA CIUDAD)
 Config.SpawnPoints = {
-    -- Zona Centro / Legion Square
-    {coords = vector3(145.2, -1035.8, 29.3), heading = 160.0, label = "Apartamento Plaza"},
-    {coords = vector3(-42.1, -1100.5, 26.4), heading = 25.0, label = "Tienda de Electrónica"},
-    
-    -- Zona Norte / Paleto Bay
-    {coords = vector3(-123.4, 6450.2, 31.4), heading = 45.0, label = "Supermercado Paleto"},
-    
-    -- Zona Sandy Shores
-    {coords = vector3(1889.2, 3690.5, 33.5), heading = 210.0, label = "Licorería Sandy"}
+    {coords = vector3(-234.5, -980.2, 29.3), heading = 180.0, zona = "Centro"},
+    {coords = vector3(120.4, -1920.8, 20.5), heading = 45.0, zona = "Territorio Ballas"},
+    {coords = vector3(-150.8, -1540.2, 30.1), heading = 270.0, zona = "Territorio Families"},
 }
 
--- 3. ECONOMÍA Y CONSUMO
-Config.Negocios = {
-    ['burgershot'] = {
-        label = "Burger Shot",
-        cuentaSociedad = "society_burgershot", -- Nombre en tu base de datos (ESX/QB)
-        precioConsumo = {min = 15, max = 45}
-    },
-    ['up_n_atom'] = {
-        label = "Up-n-Atom",
-        cuentaSociedad = "society_upnatom",
-        precioConsumo = {min = 20, max = 55}
-    }
-}
+-- 4. ECONOMÍA DINÁMICA
+Config.BaseDeliveryPay = {min = 150, max = 350}
+Config.CorpoBonus = 150          -- Dinero extra si eres clase Corpo
+Config.NetrunnerLootProb = 45    -- Probabilidad de encontrar items electrónicos al robar
 
--- 4. TRABAJOS DE NPCS (Para el sistema de inventario)
--- Define qué items lleva cada tipo de ciudadano
-Config.NPCTypes = {
-    ['business'] = { model = `a_m_y_business_02`, job = 'executive' },
-    ['worker'] = { model = `s_m_y_construct_01`, job = 'worker' },
-    ['hiker'] = { model = `a_m_y_hiker_01`, job = 'cazador' }
-}
-
--- 5. RECOMPENSAS Y PROPINAS
-Config.Propinas = {
-    DeliveryMin = 10,
-    DeliveryMax = 45,
-    ProbabilidadPropinaExtra = 15 -- 15% de probabilidad de recibir un item extra
-}
+-- 5. RELACIONES
+Config.HatesPlayerGroup = `GANG_PLAYER_HOSTILE`
