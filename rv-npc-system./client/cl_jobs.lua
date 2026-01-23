@@ -1,25 +1,25 @@
 -- ============================================================
 -- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- COMPONENTE: TRABAJOS Y ANIMACIONES (cl_jobs.lua)
+-- COMPONENTE: TRABAJOS, ANIMACIONES Y RESPETO BIO (cl_jobs.lua)
 -- ============================================================
 
 local TrabajosNPC = {
     ['MINERO'] = {
-        coords = vector3(2953.5, 2787.2, 41.5), -- Ejemplo: Mina
+        coords = vector3(2953.5, 2787.2, 41.5),
         animDict = "amb@world_human_hammering@male@base",
         animName = "base",
         escenario = "WORLD_HUMAN_HAMMERING",
         prop = `prop_tool_pickaxe`
     },
     ['OBRERO'] = {
-        coords = vector3(-156.4, -1045.9, 27.2), -- Ejemplo: Obra en el centro
+        coords = vector3(-156.4, -1045.9, 27.2),
         animDict = "amb@world_human_const_drill@male@drill@base",
         animName = "base",
         escenario = "WORLD_HUMAN_CONST_DRILL",
         prop = `prop_tool_drill`
     },
     ['LIMPIEZA'] = {
-        coords = vector3(-585.1, -236.2, 36.0), -- Ejemplo: Ayuntamiento
+        coords = vector3(-585.1, -236.2, 36.0),
         animDict = "amb@world_human_janitor@male@base",
         animName = "base",
         escenario = "WORLD_HUMAN_JANITOR",
@@ -27,12 +27,11 @@ local TrabajosNPC = {
     }
 }
 
--- 1. FUNCIÓN PARA ASIGNAR RUTINA LABORAL
+-- 1. FUNCIÓN PARA ASIGNAR RUTINA (Con comprobación de ADN)
 function AsignarRutinaTrabajo(npc, tipoTrabajo)
     local trabajo = TrabajosNPC[tipoTrabajo]
     if not trabajo then return end
 
-    -- El NPC camina hacia el punto de trabajo
     TaskGoStraightToCoord(npc, trabajo.coords.x, trabajo.coords.y, trabajo.coords.z, 1.0, 20000, 0.0, 0.0)
     
     Citizen.CreateThread(function()
@@ -48,39 +47,52 @@ function AsignarRutinaTrabajo(npc, tipoTrabajo)
     end)
 end
 
--- 2. LÓGICA DE ANIMACIONES Y PROPS
+-- 2. LÓGICA DE ANIMACIONES (Respetando tu lógica original)
 function IniciarAnimacionTrabajo(npc, data)
-    -- Usar escenario nativo si existe (es más optimizado)
     if data.escenario then
         TaskStartScenarioInPlace(npc, data.escenario, 0, true)
     else
-        -- Carga de diccionarios de animación
         RequestAnimDict(data.animDict)
         while not HasAnimDictLoaded(data.animDict) do Wait(10) end
-        
         TaskPlayAnim(npc, data.animDict, data.animName, 8.0, -8.0, -1, 49, 0, false, false, false)
         
-        -- Añadir herramienta visual si tiene prop definido
         if data.prop then
             local obj = CreateObject(data.prop, 0, 0, 0, true, true, true)
             AttachEntityToEntity(obj, npc, GetPedBoneIndex(npc, 57005), 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
         end
     end
-    
-    print("^2[Rockstar Valle]^7 NPC ha comenzado su jornada laboral.")
+    Utils.Log("NPC ha comenzado su jornada laboral.")
 end
 
--- 3. BUCLE DE CONTROL DE JORNADA
+-- 3. BUCLE DE CONTROL Y RECONOCIMIENTO BIO
 Citizen.CreateThread(function()
     while true do
         local hora = GetClockHours()
+        local playerPed = PlayerPedId()
+        local pCoords = GetEntityCoords(playerPed)
+        local bio = Utils.GetPlayerBioData(GetPlayerServerId(PlayerId()))
         
-        -- Solo trabajan de 08:00 a 18:00
         if hora >= 8 and hora <= 18 then
             for _, data in ipairs(SpawnedNPCs) do
                 if DoesEntityExist(data.entity) then
-                    -- Si el NPC no tiene tarea actual, le asignamos una aleatoria de la lista
-                    if not GetIsTaskActive(data.entity, 1) then -- 1 es el ID de TaskWander o similar
+                    local npcCoords = GetEntityCoords(data.entity)
+                    local dist = #(pCoords - npcCoords)
+
+                    -- [NUEVO] REACCIÓN AL PASO DEL JUGADOR
+                    if dist < 5.0 then
+                        if bio.isCiberpsicopata then
+                            -- Si eres peligroso, abandonan el trabajo y huyen
+                            ClearPedTasks(data.entity)
+                            TaskSmartFleePed(data.entity, playerPed, 50.0, -1, true, true)
+                            Utils.Notify(nil, "TRABAJO", "Un trabajador ha huido al verte", "error")
+                        elseif bio.class == "Corpo" then
+                            -- Si eres un pez gordo, se detienen a saludar (animación breve)
+                            TaskLookAtEntity(data.entity, playerPed, 3000, 2048, 3)
+                        end
+                    end
+
+                    -- Lógica original de asignación de trabajo
+                    if not GetIsTaskActive(data.entity, 1) and dist > 10.0 then 
                         local trabajosKeys = {"MINERO", "OBRERO", "LIMPIEZA"}
                         local randomJob = trabajosKeys[math.random(1, #trabajosKeys)]
                         AsignarRutinaTrabajo(data.entity, randomJob)
@@ -88,7 +100,6 @@ Citizen.CreateThread(function()
                 end
             end
         else
-            -- Si es fuera de horario, los mandamos a deambular o a "casa"
             for _, data in ipairs(SpawnedNPCs) do
                 if DoesEntityExist(data.entity) then
                     ClearPedTasks(data.entity)
@@ -96,6 +107,6 @@ Citizen.CreateThread(function()
                 end
             end
         end
-        Wait(30000) -- Revisamos la jornada cada 30 segundos para optimizar Windows
+        Wait(10000) -- Bajamos a 10s para que la reacción bio sea más fluida que los 30s originales
     end
 end)
