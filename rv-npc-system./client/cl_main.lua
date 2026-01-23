@@ -1,12 +1,12 @@
 -- ============================================================
 -- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- COMPONENTE: NÚCLEO, SENTIDOS Y TESTIGOS (cl_main.lua)
+-- COMPONENTE: NÚCLEO, SENTIDOS Y ESCANEO BIO (cl_main.lua)
 -- ============================================================
 
-local SpawnedNPCs = {}
+SpawnedNPCs = {} -- Tabla global para que otros scripts la vean
 local isInteracting = false
 
--- 1. FUNCIÓN MAESTRA DE CREACIÓN (FADE-IN + REGISTRO)
+-- 1. FUNCIÓN MAESTRA DE CREACIÓN (Mantenemos tu Fade-in)
 function CreateRockstarNPC(model, coords, heading)
     local hash = type(model) == 'string' and GetHashKey(model) or model
     RequestModel(hash)
@@ -20,18 +20,18 @@ function CreateRockstarNPC(model, coords, heading)
     for alpha = 0, 255, 10 do SetEntityAlpha(npc, alpha, false); Wait(50) end
 
     SetPedConfigFlag(npc, 17, true) 
-    SetPedConfigFlag(npc, 117, true) -- Flag nativa para reportar crímenes
+    SetPedConfigFlag(npc, 117, true) -- Reportar crímenes
     SetEntityAsMissionEntity(npc, true, true)
 
     local netId = NetworkGetNetworkIdFromEntity(npc)
     TriggerServerEvent('rv-npc:server:initNPC', netId, hash)
     
-    table.insert(SpawnedNPCs, {entity = npc, netId = netId, hasReported = false})
+    table.insert(SpawnedNPCs, {entity = npc, netId = netId, hasReported = false, lastScan = 0})
     AplicarLogicaEntorno(npc)
     return npc
 end
 
--- 2. LÓGICA DE ENTORNO
+-- 2. LÓGICA DE ENTORNO (Mantenemos paraguas y clima)
 function AplicarLogicaEntorno(npc)
     local weather = GetPrevailingWeatherType()
     if weather == `RAIN` or weather == `THUNDER` then
@@ -44,12 +44,13 @@ function AplicarLogicaEntorno(npc)
     end
 end
 
--- 3. BUCLE DE SENTIDOS (DAÑO, APUNTADO Y TESTIGOS)
+-- 3. BUCLE DE SENTIDOS Y RECONOCIMIENTO NEO-EVO
 Citizen.CreateThread(function()
     while true do
         local sleep = 1000
         local playerPed = PlayerPedId()
         local pCoords = GetEntityCoords(playerPed)
+        local playerId = GetPlayerServerId(PlayerId())
 
         for i, data in ipairs(SpawnedNPCs) do
             if DoesEntityExist(data.entity) then
@@ -59,7 +60,19 @@ Citizen.CreateThread(function()
                 if dist < 30.0 then
                     sleep = 500
                     
-                    -- A. REACCIÓN AL APUNTADO
+                    -- [NUEVO] ESCANEO DE RECONOCIMIENTO DE PERSONA (Cada 5 seg)
+                    if GetGameTimer() - data.lastScan > 5000 and dist < 10.0 then
+                        data.lastScan = GetGameTimer()
+                        local bio = Utils.GetPlayerBioData(playerId)
+                        
+                        -- Reacción a la Ciberpsicosis (Humanidad < 20)
+                        if bio.isCiberpsicopata then
+                            TaskSmartFleePed(data.entity, playerPed, 50.0, -1, true, true)
+                            Utils.Log("NPC asustado por Ciberpsicópata cercano.")
+                        end
+                    end
+
+                    -- A. REACCIÓN AL APUNTADO (Tu lógica original)
                     if IsPlayerFreeAimingAtEntity(PlayerId(), data.entity) then
                         if not IsEntityDead(data.entity) then
                             TaskHandsUp(data.entity, 5000, playerPed, -1, false)
@@ -67,11 +80,11 @@ Citizen.CreateThread(function()
                         end
                     end
 
-                    -- B. LÓGICA DE TESTIGO (Si el jugador dispara cerca)
+                    -- B. LÓGICA DE TESTIGO (Disparos)
                     if IsPedShooting(playerPed) and not data.hasReported then
                         if HasEntityClearLosToEntity(data.entity, playerPed, 17) then
-                            data.hasReported = true -- Solo reporta una vez
-                            ReportarCrimen(data.entity, "Disparos en la zona")
+                            data.hasReported = true
+                            ReportarCrimen(data.entity, "Sujeto armado detectado")
                         end
                     end
 
@@ -87,31 +100,25 @@ Citizen.CreateThread(function()
     end
 end)
 
--- 4. FUNCIÓN DE REPORTE (LLAMADA AL 911)
+-- 4. FUNCIÓN DE REPORTE (911 con teléfono)
 function ReportarCrimen(npc, motivo)
-    -- Animación de sacar teléfono
     RequestAnimDict("cellphone@")
     while not HasAnimDictLoaded("cellphone@") do Wait(10) end
     TaskPlayAnim(npc, "cellphone@", "cellphone_call_listen_base", 8.0, -8.0, -1, 49, 0, false, false, false)
     
-    -- Creamos el objeto teléfono en su mano
     local phone = CreateObject(`prop_npc_phone_02`, 0, 0, 0, true, true, true)
     AttachEntityToEntity(phone, npc, GetPedBoneIndex(npc, 28422), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
 
-    print("^1[Rockstar Valle]^7 Un testigo está llamando a la policía...")
-    Wait(5000) -- El NPC "habla" por 5 segundos
-
-    -- PUENTE: Enviamos el reporte al servidor para los policías reales
+    Wait(5000)
     local coords = GetEntityCoords(npc)
     TriggerServerEvent('rv-npc:server:policeAlert', coords, motivo)
 
-    -- Limpieza: Quitar teléfono y que el NPC huya
     DeleteObject(phone)
     StopAnimTask(npc, "cellphone@", "cellphone_call_listen_base", 1.0)
     TaskSmartFleePed(npc, PlayerPedId(), 100.0, -1, true, true)
 end
 
--- 5. ESCANEO DE SPAWN (PUERTAS)
+-- 5. ESCANEO DE SPAWN (Basado en tu Config)
 Citizen.CreateThread(function()
     while true do
         local pCoords = GetEntityCoords(PlayerPedId())
@@ -119,6 +126,7 @@ Citizen.CreateThread(function()
             local distance = #(pCoords - point.coords)
             if distance < Config.DistanceSpawn and distance > 15.0 then
                 if #SpawnedNPCs < Config.MaxNPCsPorZona then
+                    -- Generamos un modelo de los que ya tenías configurados
                     CreateRockstarNPC(`a_m_y_business_02`, point.coords, point.heading)
                 end
             end
