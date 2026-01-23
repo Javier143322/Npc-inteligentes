@@ -1,6 +1,6 @@
 -- ============================================================
 -- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- COMPONENTE: INTELIGENCIA DE BANDAS (cl_gangs.lua)
+-- COMPONENTE: INTELIGENCIA DE BANDAS Y RECONOCIMIENTO BIO (cl_gangs.lua)
 -- ============================================================
 
 local GangZones = {
@@ -8,21 +8,29 @@ local GangZones = {
     {name = "Ballas", coords = vector3(100.0, -1900.0, 25.0), radius = 150.0, modelHash = `g_m_y_ballaeast_01`},
 }
 
--- 1. FUNCIÓN: DETECTAR SI EL JUGADOR ESTÁ EN ZONA DE RIESGO
+-- 1. DETECTAR SI EL JUGADOR ESTÁ EN ZONA DE RIESGO
 Citizen.CreateThread(function()
     while true do
         local sleep = 2000
         local playerPed = PlayerPedId()
         local pCoords = GetEntityCoords(playerPed)
+        local playerId = GetPlayerServerId(PlayerId())
 
         for _, zone in pairs(GangZones) do
             local dist = #(pCoords - zone.coords)
             
             if dist < zone.radius then
                 sleep = 1000
-                -- Si el jugador tiene un arma en la mano, los NPCs se ponen alerta
-                if IsPedArmed(playerPed, 7) then
-                    AlertarBandaCercana(zone.name, pCoords)
+                
+                -- [NUEVO] ESCANEO BIO PARA BANDAS
+                local bio = Utils.GetPlayerBioData(playerId)
+                
+                -- Lógica de Amenaza: Si eres un Solo o tienes baja humanidad, te ven antes
+                local thresholdDist = (bio.class == "Solo" or bio.isCiberpsicopata) and 60.0 or 40.0
+                
+                -- Si el jugador está armado O es una amenaza biológica (Ciberpsicosis)
+                if IsPedArmed(playerPed, 7) or bio.isCiberpsicopata then
+                    AlertarBandaCercana(zone.name, pCoords, bio)
                 end
             end
         end
@@ -30,24 +38,34 @@ Citizen.CreateThread(function()
     end
 end)
 
--- 2. LÓGICA DE ATAQUE COORDINADO
-function AlertarBandaCercana(gangName, playerCoords)
+-- 2. LÓGICA DE ATAQUE COORDINADO (Mejorada con NEO-EVO)
+function AlertarBandaCercana(gangName, playerCoords, bio)
     local pPed = PlayerPedId()
-    
-    -- Buscamos NPCs de la banda en el área
     local peds = GetGamePool('CPed')
+    
     for _, npc in ipairs(peds) do
         if not IsPedAPlayer(npc) and not IsEntityDead(npc) then
             local npcCoords = GetEntityCoords(npc)
-            if #(npcCoords - playerCoords) < 40.0 then
-                -- Si el NPC pertenece a la banda (por modelo o relación)
-                -- Aquí podrías añadir una comprobación de reputación desde la DB
-                
+            
+            -- Las bandas tienen un "sexto sentido" para los Solos (detectan a 50m)
+            local detectionRange = (bio.class == "Solo") and 50.0 or 40.0
+            
+            if #(npcCoords - playerCoords) < detectionRange then
+                -- Si el NPC es hostil al jugador (Relación de grupo)
                 SetPedRelationshipGroupHash(npc, `HATES_PLAYER`)
-                TaskCombatPed(npc, pPed, 0, 16) -- Atacar al jugador
                 
-                -- Gritar aviso a otros miembros
-                PlayAmbientSpeech1(npc, "GENERIC_CURSE_HIGH", "SPEECH_PARAMS_FORCE_SHOUTED")
+                -- Si el jugador es Ciberpsicópata, el NPC dispara a matar sin aviso
+                local accuracy = bio.isCiberpsicopata and 100 or 60
+                SetPedAccuracy(npc, accuracy)
+                
+                TaskCombatPed(npc, pPed, 0, 16)
+                
+                -- Reacción vocal según la clase del jugador
+                if bio.isCiberpsicopata then
+                    PlayAmbientSpeech1(npc, "GENERIC_FRIGHTENED_HIGH", "SPEECH_PARAMS_FORCE_SHOUTED")
+                else
+                    PlayAmbientSpeech1(npc, "GENERIC_CURSE_HIGH", "SPEECH_PARAMS_FORCE_SHOUTED")
+                end
             end
         end
     end
