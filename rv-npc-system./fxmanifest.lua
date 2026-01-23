@@ -1,29 +1,16 @@
--- ============================================================
--- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- AUTHOR: ANDRÉS (PROJECT MANAGER)
--- VERSIÓN: 1.1.0 (Final Release)
--- ============================================================
-
 fx_version 'cerulean'
 game 'gta5'
 
-description 'Sistema Integral de NPCs: IA, Economía y Reputación de Bandas'
-version '1.1.0'
+description 'Rockstar Valle - Sistema de NPCs Autónomos (Conciencia Bio)'
+version '2.0.0'
 
--- Dependencias Críticas
-dependencies {
-    'oxmysql',
-    'ox_lib',
-    'ox_inventory'
-}
-
--- Scripts Compartidos
+-- IMPORTANTE: sh_utils debe ir primero para que el puente exista
 shared_scripts {
+    '@ox_lib/init.lua',
     'config.lua',
-    'utils/sh_utils.lua'
+    'utils/sh_utils.lua' 
 }
 
--- Scripts del Cliente
 client_scripts {
     'client/cl_main.lua',
     'client/cl_driving.lua',
@@ -32,17 +19,14 @@ client_scripts {
     'client/cl_gangs.lua'
 }
 
--- Scripts del Servidor
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/sv_main.lua',
-    'server/sv_economy.lua',
-    'server/sv_gangs.lua' -- Nuevo módulo de persistencia de bandas
+    'server/sv_economy.lua'
 }
 
--- Archivos de Datos / SQL
-files {
-    'utils/npcs.sql'
+dependencies {
+    'ox_lib',
+    'ox_inventory',
+    'neo_evo' -- Añadimos esto para asegurar que el ADN cargue antes
 }
-
-provide 'rv-npc-system'
