@@ -1,64 +1,68 @@
 -- ============================================================
 -- PROYECTO: ROCKSTAR VALLE - SISTEMA DE NPCS AUTÓNOMOS
--- COMPONENTE: CONDUCCIÓN AVANZADA (cl_driving.lua)
+-- COMPONENTE: CONDUCCIÓN Y PERCEPCIÓN DE AMENAZA (cl_driving.lua)
 -- ============================================================
 
--- Configuración de estilos de conducción de GTA V
--- 786603: Estilo que esquiva tráfico, respeta semáforos pero es ágil.
--- 1074528293: Estilo de huida (ignora todo para escapar).
-local DrivingStyle = 786603 
+local DrivingStyle = 786603 -- Estilo ágil original
 
--- 1. FUNCIÓN PARA ASIGNAR CONDUCTOR INTELIGENTE
+-- 1. CONFIGURAR CONDUCTOR (Mejorado con datos Bio)
 function ConfigurarConducionNPC(npc, vehiculo)
-    -- Configuramos la inteligencia del conductor
-    SetDriverAbility(npc, 1.0) -- Habilidad máxima al volante
-    SetDriverAggressiveness(npc, 0.5) -- Agresividad media (ni miedoso ni asesino)
+    local playerId = GetPlayerServerId(PlayerId())
+    local bio = Utils.GetPlayerBioData(playerId)
+
+    SetDriverAbility(npc, 1.0)
+    SetDriverAggressiveness(npc, 0.5)
     
-    -- Aplicamos el estilo de conducción avanzado de Rockstar Valle
-    SetDriveTaskDrivingStyle(npc, DrivingStyle)
+    -- Si el jugador es una amenaza (Ciberpsicosis), el NPC conduce con MIEDO (estilo más cauteloso)
+    local actualStyle = bio.isCiberpsicopata and 1074528293 or DrivingStyle
+    SetDriveTaskDrivingStyle(npc, actualStyle)
     
-    -- Flags para mejorar la reacción
-    SetPedConfigFlag(npc, 118, true) -- Capacidad de rebasar otros vehículos
-    SetPedConfigFlag(npc, 128, true) -- Capacidad de hacer maniobras evasivas
+    SetPedConfigFlag(npc, 118, true) -- Rebasar
+    SetPedConfigFlag(npc, 128, true) -- Maniobras evasivas
     
-    print("^4[Rockstar Valle]^7 Conductor Inteligente configurado en RedID: " .. NetworkGetNetworkIdFromEntity(npc))
+    Utils.Log("Conductor configurado. Reacción ante clase: " .. bio.class)
 end
 
--- 2. BUCLE DE MONITOREO DE TRÁFICO (REACCIÓN A BLOQUEOS)
+-- 2. BUCLE DE MONITOREO (Reacción al ADN del jugador)
 Citizen.CreateThread(function()
     while true do
         local sleep = 2000
         local playerPed = PlayerPedId()
+        local playerId = GetPlayerServerId(PlayerId())
+        local pCoords = GetEntityCoords(playerPed)
         
-        -- Revisamos todos los NPCs que hemos creado nosotros
         for i, data in ipairs(SpawnedNPCs) do
             if DoesEntityExist(data.entity) then
                 local veh = GetVehiclePedIsIn(data.entity, false)
                 
                 if veh ~= 0 and GetPedInVehicleSeat(veh, -1) == data.entity then
-                    sleep = 500 -- Aumentamos la frecuencia si hay conductores cerca
+                    sleep = 500
+                    local dist = #(pCoords - GetEntityCoords(veh))
                     
-                    local coords = GetEntityCoords(veh)
-                    local speed = GetEntitySpeed(veh)
-
-                    -- LÓGICA: Detección de atasco o bloqueo
-                    if speed < 0.1 and not IsEntityInWater(veh) then
-                        -- Si el coche está parado pero el motor encendido, algo lo bloquea
-                        -- Esperamos un momento y le ordenamos rebasar
-                        Wait(3000) 
-                        if GetEntitySpeed(veh) < 0.1 then
-                            -- Forzamos al NPC a encontrar una nueva ruta o esquivar
-                            TaskVehicleDriveWander(data.entity, veh, 20.0, DrivingStyle)
-                            print("^3[Rockstar Valle]^7 NPC rebasando obstáculo...")
+                    -- Si el jugador está cerca, el NPC "escanea" quién viene
+                    if dist < 20.0 then
+                        local bio = Utils.GetPlayerBioData(playerId)
+                        
+                        -- LÓGICA: Si eres Ciberpsicópata, los coches se apartan
+                        if bio.isCiberpsicopata then
+                            TaskVehicleTempAction(data.entity, veh, 6, 2000) -- Frenar y apartarse
                         end
                     end
 
-                    -- LÓGICA: Reacción al Clima en la conducción
+                    -- LÓGICA ORIGINAL: Bloqueos y Clima
+                    local speed = GetEntitySpeed(veh)
+                    if speed < 0.1 and not IsEntityInWater(veh) then
+                        Wait(3000) 
+                        if GetEntitySpeed(veh) < 0.1 then
+                            TaskVehicleDriveWander(data.entity, veh, 20.0, DrivingStyle)
+                        end
+                    end
+
                     local weather = GetPrevailingWeatherType()
                     if weather == `RAIN` or weather == `THUNDER` then
-                        SetDriveTaskMaxCruiseSpeed(data.entity, 15.0) -- Reduce velocidad por lluvia
+                        SetDriveTaskMaxCruiseSpeed(data.entity, 15.0)
                     else
-                        SetDriveTaskMaxCruiseSpeed(data.entity, 30.0) -- Velocidad crucero normal
+                        SetDriveTaskMaxCruiseSpeed(data.entity, 30.0)
                     end
                 end
             end
@@ -67,8 +71,7 @@ Citizen.CreateThread(function()
     end
 end)
 
--- 3. EXPORT PARA OTROS SCRIPTS
+-- 3. EXPORT
 exports('ConfigurarConductor', function(npc, veh)
     ConfigurarConducionNPC(npc, veh)
 end)
-
